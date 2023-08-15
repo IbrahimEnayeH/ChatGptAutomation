@@ -12,7 +12,6 @@ try:
 except FileNotFoundError:
     api_key = "your_default_api_key_here"
 
-# Initialize the OpenAI API with the loaded key
 openai.api_key = api_key
 
 
@@ -27,7 +26,7 @@ requests_list = []
 responses_list = []
 processing = False
 rate_limit = 3
-selected_max_tokens = 100  # Default max tokens value
+selected_max_tokens = 200  # Default max tokens value
 
 def update_timer():
     if processing:
@@ -47,7 +46,7 @@ def process_phrases():
     file_path = filedialog.askopenfilename(filetypes=[('Excel Files', '*.xlsx')])
 
     if not file_path:  # User cancelled or didn't choose a file
-        error_label.config(text="Error: No file selected")
+        tk.messagebox.showinfo("Error", "No file selected")
         return
 
     try:
@@ -66,13 +65,10 @@ def process_phrases():
         # Disable the import button during processing
         import_button.config(state="disabled")
 
-        # Get the selected engine from the combobox
-        selected_engine = engine_combobox.get()
-
         # Calculate the time interval between each request based on the rate limit
         time_interval = 60 / rate_limit
 
-        def process_request(index):
+        def process_next_request(index):
             if index >= len(requests_list):
                 # Processing completed for all requests
                 processing = False
@@ -80,40 +76,45 @@ def process_phrases():
 
                 # Show a message indicating processing is complete
                 tk.messagebox.showinfo("Processing Complete", "Phrases processed successfully!")
-                error_label.config(text="")  # Clear any previous error messages
+                save_responses()  # Save the responses to a file
 
                 return
 
             try:
-                # Send the phrase to ChatGPT using the selected OpenAI API engine
-                response = openai.Completion.create(
-                    engine=selected_engine,
-                    prompt=requests_list[index],
-                    max_tokens=selected_max_tokens  # Use the selected max tokens value
+                # Create a list of messages for the conversation
+                messages = [{"role": "system", "content": "You are a chatbot which can search text and provide a summarised answer."}]
+                for i in range(index + 1):
+                    messages.append({"role": "user", "content": requests_list[i]})
+
+                # Send the conversation to the ChatCompletion API
+                response = openai.ChatCompletion.create(
+                    model="gpt-3.5-turbo-16k",
+                    messages=messages
                 )
 
                 # Extract the generated response from the API response
-                generated_text = response.choices[0].text.strip()
+                generated_text = response['choices'][0]['message']['content'].strip()
 
                 # Append the response to the list
                 responses_list.append(generated_text)
 
             except Exception as e:
-                # If an error occurs, show the error message in the error_label
-                error_label.config(text=str(e))
+                # If an error occurs, show the error message in a new showinfo box
+                tk.messagebox.showinfo("Error", str(e))
                 processing = False  # Stop the timer-like indicator
                 import_button.config(state="normal")  # Enable the import button
                 return
 
             # Process the next request after the time interval
-            root.after(int(time_interval * 1000), process_request, index + 1)
+            root.after(int(time_interval * 1000), process_next_request, index + 1)
 
         # Start processing the first request
-        process_request(0)
+        process_next_request(0)
 
     except Exception as e:
-        # If there is an error reading the Excel file, show the error message in the error_label
-        error_label.config(text=str(e))
+        # If there is an error reading the Excel file, show the error message in a new showinfo box
+        tk.messagebox.showinfo("Error", str(e))
+
 
 def save_responses():
     global requests_list, responses_list
@@ -228,12 +229,16 @@ menu_bar.add_cascade(label="About", menu=about_menu)
 credit_label = tk.Label(root, text="", fg="green", font=("Helvetica", 20))
 
 # Available OpenAI API engines
-engines = ["text-davinci-002", "text-davinci", "text-codex"]
+# engines = ["gpt-3.5-turbo-16k","text-davinci-002", "text-davinci", "text-codex"]
+#
+#
+# # Create a Combobox widget to select the engine
+# engine_combobox = ttk.Combobox(root, values=engines, state="readonly")
+# engine_combobox.set("gpt-3.5-turbo-16k")  # Set the default selected engine
 
-
-# Create a Combobox widget to select the engine
-engine_combobox = ttk.Combobox(root, values=engines, state="readonly")
-engine_combobox.set("text-davinci-002")  # Set the default selected engine
+# Create a Label widget to display a note
+note_label = tk.Label(root, text="Note: Excel file must start with 'Requests' column", fg="gray", font=("Helvetica", 12))
+note_label.pack(pady=10)
 
 # Rate Limiter Widgets
 rate_limit_label = tk.Label(root, text=f"Rate Limit: {rate_limit} requests per minute", font=('Helvetica', 12))
@@ -248,8 +253,8 @@ error_label.pack(pady=10)
 timer_label.pack(pady=10)
 credit_label.pack(pady=20)
 
-# Place the engine_combobox in the top-right corner
-engine_combobox.place(relx=0.85, rely=0.03, anchor=tk.CENTER)
+# # Place the engine_combobox in the top-right corner
+# engine_combobox.place(relx=0.85, rely=0.03, anchor=tk.CENTER)
 
 # Pack rate limiter widgets vertically with padding
 rate_limit_label.pack(pady=10)
