@@ -82,7 +82,7 @@ def process_phrases():
 
             try:
                 # Create a list of messages for the conversation
-                messages = [{"role": "system", "content": "You are a chatbot which can search text and provide a summarised answer."}]
+                messages = [{"role": "system", "content": "You are a helpful assistant , answer directly"}]
                 for i in range(index + 1):
                     messages.append({"role": "user", "content": requests_list[i]})
 
