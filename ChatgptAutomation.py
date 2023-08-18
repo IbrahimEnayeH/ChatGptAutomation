@@ -42,6 +42,8 @@ def update_timer():
         root.after(1000, update_timer)
 
 def process_phrases():
+    selected_engine = engine_combobox.get()
+
     # Get the file path from the user
     file_path = filedialog.askopenfilename(filetypes=[('Excel Files', '*.xlsx')])
 
@@ -68,7 +70,7 @@ def process_phrases():
         # Calculate the time interval between each request based on the rate limit
         time_interval = 60 / rate_limit
 
-        def process_next_request(index):
+        def process_next_request_0(index):
             if index >= len(requests_list):
                 # Processing completed for all requests
                 processing = False
@@ -106,10 +108,93 @@ def process_phrases():
                 return
 
             # Process the next request after the time interval
-            root.after(int(time_interval * 1000), process_next_request, index + 1)
+            root.after(int(time_interval * 1000), process_next_request_0, index + 1)
 
-        # Start processing the first request
-        process_next_request(0)
+        def process_next_request_1(index):
+            if index >= len(requests_list):
+                # Processing completed for all requests
+                processing = False
+                import_button.config(state="normal")  # Enable the import button
+
+                # Show a message indicating processing is complete
+                tk.messagebox.showinfo("Processing Complete", "Phrases processed successfully!")
+                save_responses()  # Save the responses to a file
+
+                return
+
+            try:
+                # Create a list of messages for the conversation
+                messages = [{"role": "system", "content": "You are a helpful assistant , answer directly"}]
+                for i in range(index + 1):
+                    messages.append({"role": "user", "content": requests_list[i]})
+
+                # Send the conversation to the ChatCompletion API
+                response = openai.ChatCompletion.create(
+                    model="gpt-3.5-turbo-16k",
+                    messages=messages
+                )
+
+                # Extract the generated response from the API response
+                generated_text = response['choices'][0]['message']['content'].strip()
+
+                # Append the response to the list
+                responses_list.append(generated_text)
+
+            except Exception as e:
+                # If an error occurs, show the error message in a new showinfo box
+                tk.messagebox.showinfo("Error", str(e))
+                processing = False  # Stop the timer-like indicator
+                import_button.config(state="normal")  # Enable the import button
+                return
+
+            # Process the next request after the time interval
+            root.after(int(time_interval * 1000), process_next_request_1, index + 1)
+
+        def process_next_request_2(index):
+            if index >= len(requests_list):
+                # Processing completed for all requests
+                processing = False
+                import_button.config(state="normal")  # Enable the import button
+
+                # Show a message indicating processing is complete
+                tk.messagebox.showinfo("Processing Complete", "Phrases processed successfully!")
+                save_responses()  # Save the responses to a file
+
+                return
+
+            try:
+                # Send the phrase to ChatGPT using the selected OpenAI API engine
+                response = openai.Completion.create(
+                    engine=selected_engine,
+                    prompt=requests_list[index],
+                    max_tokens=selected_max_tokens  # Adjust the token limit according to your requirements
+                )
+
+                # Extract the generated response from the API response
+                generated_text = response['choices'][0]['text'].strip()
+
+                # Append the response to the list
+                responses_list.append(generated_text)
+
+
+            except Exception as e:
+                # If an error occurs, show the error message in a new showinfo box
+                tk.messagebox.showinfo("Error", str(e))
+                processing = False  # Stop the timer-like indicator
+                import_button.config(state="normal")  # Enable the import button
+                return
+
+            # Process the next request after the time interval
+            root.after(int(time_interval * 1000), process_next_request_2, index + 1)
+
+        # Start processing the first request based on what engine/model selected:
+        if selected_engine == "gpt-3.5-turbo-16k":
+            process_next_request_0(0)
+        elif selected_engine =="gpt-3.5-turbo-4k":
+            process_next_request_1(0)
+        elif selected_engine =="text-davinci-002":
+            process_next_request_2(0)
+
 
     except Exception as e:
         # If there is an error reading the Excel file, show the error message in a new showinfo box
@@ -229,12 +314,12 @@ menu_bar.add_cascade(label="About", menu=about_menu)
 credit_label = tk.Label(root, text="", fg="green", font=("Helvetica", 20))
 
 # Available OpenAI API engines
-# engines = ["gpt-3.5-turbo-16k","text-davinci-002", "text-davinci", "text-codex"]
-#
-#
-# # Create a Combobox widget to select the engine
-# engine_combobox = ttk.Combobox(root, values=engines, state="readonly")
-# engine_combobox.set("gpt-3.5-turbo-16k")  # Set the default selected engine
+engines = ["gpt-3.5-turbo-16k","gpt-3.5-turbo-4k","text-davinci-002"]
+
+
+# Create a Combobox widget to select the engine
+engine_combobox = ttk.Combobox(root, values=engines, state="readonly")
+engine_combobox.set("gpt-3.5-turbo-16k")  # Set the default selected engine
 
 # Create a Label widget to display a note
 note_label = tk.Label(root, text="Note: Excel file must start with 'Requests' column", fg="gray", font=("Helvetica", 12))
@@ -254,7 +339,7 @@ timer_label.pack(pady=10)
 credit_label.pack(pady=20)
 
 # # Place the engine_combobox in the top-right corner
-# engine_combobox.place(relx=0.85, rely=0.03, anchor=tk.CENTER)
+engine_combobox.place(relx=0.85, rely=0.08, anchor=tk.CENTER)
 
 # Pack rate limiter widgets vertically with padding
 rate_limit_label.pack(pady=10)
