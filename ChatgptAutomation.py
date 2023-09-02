@@ -41,8 +41,15 @@ def update_timer():
         timer_label.config(text=f"Estimated Time Left: {int(hours)}h {int(minutes)}m {int(seconds)}s")
         root.after(1000, update_timer)
 
+
+
+
 def process_phrases():
     selected_engine = engine_combobox.get()
+    role = role_combobox.get()
+
+    # Get the content from the Entry widget
+    content = content_entry.get()
 
     # Get the file path from the user
     file_path = filedialog.askopenfilename(filetypes=[('Excel Files', '*.xlsx')])
@@ -84,7 +91,7 @@ def process_phrases():
 
             try:
                 # Create a list of messages for the conversation
-                messages = [{"role": "system", "content": "You are a helpful assistant , answer directly"}]
+                messages = [{"role": role, "content": content}]
                 for i in range(index + 1):
                     messages.append({"role": "user", "content": requests_list[i]})
 
@@ -124,7 +131,7 @@ def process_phrases():
 
             try:
                 # Create a list of messages for the conversation
-                messages = [{"role": "system", "content": "You are a helpful assistant , answer directly"}]
+                messages = [{"role": role, "content": content}]
                 for i in range(index + 1):
                     messages.append({"role": "user", "content": requests_list[i]})
 
@@ -274,6 +281,7 @@ def change_api_key():
         tk.messagebox.showinfo("API Key Updated", "API key has been updated successfully.")
 
 
+
 # Create the main GUI window
 root = tk.Tk()
 root.title("ChatGPT Responses")
@@ -321,6 +329,20 @@ engines = ["gpt-3.5-turbo-16k","gpt-3.5-turbo-4k","text-davinci-002"]
 engine_combobox = ttk.Combobox(root, values=engines, state="readonly")
 engine_combobox.set("gpt-3.5-turbo-16k")  # Set the default selected engine
 
+
+roles = ["system","user","assistant","function"]
+# Create a Listbox for selecting roles
+role_combobox = ttk.Combobox(root, values=roles, state="readonly")
+role_combobox.set("system")
+
+# Create a Label widget to display a note
+content_label = tk.Label(root, text="content", fg="gray", font=("Helvetica", 8))
+content_label.place(relx=0.85, rely=0.15, anchor=tk.CENTER)
+
+# Create an Entry widget for entering content
+content_entry = tk.Entry(root, font=('Helvetica', 9), width=20)
+content_entry.insert(0, "You are a helpful assistant , answer directly")  # Set a default message
+
 # Create a Label widget to display a note
 note_label = tk.Label(root, text="Note: Excel file must start with 'Requests' column", fg="gray", font=("Helvetica", 12))
 note_label.pack(pady=10)
@@ -338,8 +360,14 @@ error_label.pack(pady=10)
 timer_label.pack(pady=10)
 credit_label.pack(pady=20)
 
-# # Place the engine_combobox in the top-right corner
+#  Place the engine_combobox in the top-right corner
 engine_combobox.place(relx=0.85, rely=0.08, anchor=tk.CENTER)
+
+# Place the role selection Listbox
+role_combobox.place(relx=0.85, rely=0.12, anchor=tk.CENTER)
+
+# Place the content enrty box
+content_entry.place(relx=0.85, rely=0.18, anchor=tk.CENTER)
 
 # Pack rate limiter widgets vertically with padding
 rate_limit_label.pack(pady=10)
@@ -359,6 +387,7 @@ max_tokens_label.pack(pady=10)
 max_tokens_entry.pack(pady=5)
 max_tokens_set_button.pack(pady=5)
 max_tokens_error_label.pack(pady=5)
+
 
 
 # Start the main event loop
